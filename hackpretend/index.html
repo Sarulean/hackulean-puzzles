@@ -119,6 +119,12 @@
         min-height: 1.4em;
         margin: 6px 0 0;
         font-weight: 700;
+        opacity: 1;
+        transition: opacity 420ms ease;
+      }
+
+      .result.fading-out {
+        opacity: 0;
       }
 
       .ok {
@@ -388,14 +394,14 @@
   <body>
     <main class="panel">
       <h1>HACK PRETEND UNIVERSE PRIVATE ACCESS TUNNEL</h1>
-      <p class="sub">PLEASE ENTER PASSWORD </p>
-      <p class="sub">Password Hint: </p>
+      <p id="login-prompt" class="sub hidden">PLEASE ENTER PASSWORD </p>
+      <p id="password-hint" class="sub hidden">Password Hint: </p>
 
-      <p id="clue" class="clue">
+      <p id="clue" class="clue hidden">
         This universe was called the AI Pretend at one point. The Hack Pretend has been "revived" many times. Besides the AI Pretend, what was one of these "revivals" names?
       </p>
 
-      <form id="code-form" autocomplete="off">
+      <form id="code-form" class="hidden" autocomplete="off">
         <label for="code-input">CODE</label>
         <input id="code-input" name="code" type="text" spellcheck="false" required />
         <button type="submit">VERIFY</button>
@@ -523,10 +529,11 @@
     <div id="incoming-alert" class="incoming-alert">INCOMING CONNECTION</div>
 
     <script>
-      const ANSWER = "DEVICEPRETEND";
       const form = document.getElementById("code-form");
       const input = document.getElementById("code-input");
       const result = document.getElementById("result");
+      const loginPrompt = document.getElementById("login-prompt");
+      const passwordHint = document.getElementById("password-hint");
       const partThreeMessage = document.getElementById("part-three-message");
       const clue = document.getElementById("clue");
       const verifyButton = form.querySelector('button[type="submit"]');
@@ -551,6 +558,21 @@
       let foundBootSet = false;
       let keywordCheckComplete = false;
       let logoutSequenceStarted = false;
+
+      function enterHomepageState() {
+        form.classList.add("hidden");
+        clue.classList.add("hidden");
+        loginPrompt.classList.add("hidden");
+        passwordHint.classList.add("hidden");
+        adminPanel.classList.remove("hidden");
+        result.textContent = "";
+        result.className = "result";
+
+        appendLog("[SYS] Admin panel unlocked.");
+        appendLog("[SYS] Awaiting management action...");
+        applyPrivilegeState();
+        syncPrivilegeToggle();
+      }
 
       function closeAllMenus() {
         fakeMenus.forEach((menu) => menu.classList.remove("visible"));
@@ -628,8 +650,10 @@
         applyPrivilegeState();
         syncPrivilegeToggle();
 
-        form.classList.remove("hidden");
-        clue.classList.remove("hidden");
+        form.classList.add("hidden");
+        clue.classList.add("hidden");
+        loginPrompt.classList.add("hidden");
+        passwordHint.classList.add("hidden");
         adminPanel.classList.add("hidden");
         systemLog.classList.add("hidden");
         systemLog.classList.remove("fullscreen");
@@ -646,18 +670,37 @@
           verifyButton.disabled = true;
         }
         input.placeholder = "LOCKED";
-        result.textContent = "LOGGED OUT";
+        result.textContent = "LOCKED OUT";
         result.className = "result bad";
       }
 
       function applyPersistentLogoutState() {
         if (localStorage.getItem(LOGOUT_LOCK_KEY) !== "1") {
-          return;
+          return false;
         }
 
         restoreLoginPrompt();
         partThreeMessage.classList.remove("hidden");
         partThreeMessage.textContent = "Welcome to Part Three. https://sarulean.com/partthree";
+        return true;
+      }
+
+      async function runAutoLoginIntro() {
+        result.className = "result ok";
+
+        for (let count = 3; count >= 0; count--) {
+          await typePanelMessage(
+            result,
+            `Password brute-forced successfully. Hacking in in ${count}...`,
+            42,
+          );
+          await wait(420);
+        }
+
+        result.classList.add("fading-out");
+        await wait(460);
+        result.classList.remove("fading-out");
+        enterHomepageState();
       }
 
       async function runDeleteCompletionFlow() {
@@ -882,26 +925,15 @@
 
       form.addEventListener("submit", (event) => {
         event.preventDefault();
-        const entered = input.value.trim().toUpperCase();
-
-        if (entered === ANSWER) {
-          result.textContent = "ACCESS GRANTED";
-          result.className = "result ok";
-          form.classList.add("hidden");
-          clue.classList.add("hidden");
-          adminPanel.classList.remove("hidden");
-          appendLog("[SYS] Admin panel unlocked.");
-          appendLog("[SYS] Awaiting management action...");
-          applyPrivilegeState();
-          syncPrivilegeToggle();
-        } else {
-          result.textContent = "ACCESS DENIED";
-          result.className = "result bad";
-        }
+        enterHomepageState();
       });
 
       syncPrivilegeToggle();
-      applyPersistentLogoutState();
+      const isLockedOut = applyPersistentLogoutState();
+
+      if (!isLockedOut) {
+        runAutoLoginIntro();
+      }
 
       if (!logOutput.hasChildNodes()) {
         appendLog("[SYS] Incident log standby. Awaiting access handshake...");
