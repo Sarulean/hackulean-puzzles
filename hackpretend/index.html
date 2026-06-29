@@ -50,6 +50,17 @@
         border-radius: 12px;
         padding: 24px;
         box-shadow: 0 0 30px rgba(46, 196, 182, 0.22);
+        opacity: 1;
+        transition:
+          opacity 280ms ease,
+          box-shadow 280ms ease,
+          border-color 280ms ease;
+      }
+
+      .panel.boot-screen-hidden {
+        opacity: 0;
+        border-color: transparent;
+        box-shadow: none;
       }
 
       h1 {
@@ -121,10 +132,15 @@
         font-weight: 700;
         opacity: 1;
         transition: opacity 420ms ease;
+        white-space: pre-wrap;
       }
 
       .result.fading-out {
         opacity: 0;
+      }
+
+      .result.flicker {
+        animation: boot-flicker 140ms linear 4;
       }
 
       .ok {
@@ -137,6 +153,10 @@
 
       .hidden {
         display: none;
+      }
+
+      .dashboard-flicker-in {
+        animation: dashboard-flicker-in 560ms ease;
       }
 
       .admin-shell {
@@ -389,10 +409,50 @@
       .chat-box button {
         width: 140px;
       }
+
+      @keyframes boot-flicker {
+        0%,
+        100% {
+          opacity: 1;
+        }
+
+        30%,
+        60% {
+          opacity: 0.18;
+        }
+      }
+
+      @keyframes dashboard-flicker-in {
+        0% {
+          opacity: 0;
+          transform: translateY(5px);
+        }
+
+        18% {
+          opacity: 1;
+        }
+
+        32% {
+          opacity: 0.18;
+        }
+
+        48% {
+          opacity: 1;
+        }
+
+        62% {
+          opacity: 0.32;
+        }
+
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
     </style>
   </head>
   <body>
-    <main class="panel">
+    <main id="main-panel" class="panel boot-screen-hidden">
       <h1>HACK PRETEND UNIVERSE PRIVATE ACCESS TUNNEL</h1>
       <p id="login-prompt" class="sub hidden">PLEASE ENTER PASSWORD </p>
       <p id="password-hint" class="sub hidden">Password Hint: </p>
@@ -506,7 +566,7 @@
         <p id="admin-status" class="admin-status">SYSTEM STATUS: STANDBY</p>
       </section>
 
-      <section id="system-log" class="log-shell" aria-live="polite">
+      <section id="system-log" class="log-shell hidden" aria-live="polite">
         <h3 class="log-head">SYSTEM INCIDENT LOG</h3>
         <div id="log-output" class="log-output"></div>
         <form id="chat-form" class="chat-box hidden" autocomplete="off">
@@ -529,8 +589,10 @@
     <div id="incoming-alert" class="incoming-alert">INCOMING CONNECTION</div>
 
     <script>
+      const LOGGED_IN_KEY = "hackpretend_logged_in";
       const form = document.getElementById("code-form");
       const input = document.getElementById("code-input");
+      const mainPanel = document.getElementById("main-panel");
       const result = document.getElementById("result");
       const loginPrompt = document.getElementById("login-prompt");
       const passwordHint = document.getElementById("password-hint");
@@ -559,14 +621,32 @@
       let keywordCheckComplete = false;
       let logoutSequenceStarted = false;
 
-      function enterHomepageState() {
+      function clearBootMessage() {
+        result.textContent = "";
+        result.className = "result";
+      }
+
+      function enterHomepageState(animate = false) {
+        mainPanel.classList.remove("boot-screen-hidden");
         form.classList.add("hidden");
         clue.classList.add("hidden");
         loginPrompt.classList.add("hidden");
         passwordHint.classList.add("hidden");
         adminPanel.classList.remove("hidden");
-        result.textContent = "";
-        result.className = "result";
+        systemLog.classList.remove("hidden");
+        clearBootMessage();
+
+        if (animate) {
+          [adminPanel, systemLog].forEach((element) => {
+            element.classList.remove("dashboard-flicker-in");
+            void element.offsetWidth;
+            element.classList.add("dashboard-flicker-in");
+          });
+        }
+
+        if (!logOutput.hasChildNodes()) {
+          appendLog("[SYS] Incident log standby. Awaiting access handshake...");
+        }
 
         appendLog("[SYS] Admin panel unlocked.");
         appendLog("[SYS] Awaiting management action...");
@@ -650,6 +730,7 @@
         applyPrivilegeState();
         syncPrivilegeToggle();
 
+        mainPanel.classList.remove("boot-screen-hidden");
         form.classList.add("hidden");
         clue.classList.add("hidden");
         loginPrompt.classList.add("hidden");
@@ -674,6 +755,17 @@
         result.className = "result bad";
       }
 
+      async function flickerPanelMessage(message, className = "result ok") {
+        result.className = className;
+        result.textContent = message;
+        for (let i = 0; i < 3; i++) {
+          result.classList.add("flicker");
+          await wait(150);
+          result.classList.remove("flicker");
+          await wait(110);
+        }
+      }
+
       function applyPersistentLogoutState() {
         if (localStorage.getItem(LOGOUT_LOCK_KEY) !== "1") {
           return false;
@@ -686,21 +778,27 @@
       }
 
       async function runAutoLoginIntro() {
-        result.className = "result ok";
+        mainPanel.classList.add("boot-screen-hidden");
+        await wait(3000);
+        mainPanel.classList.remove("boot-screen-hidden");
+        await flickerPanelMessage("SYSTEM MESSAGE", "result ok");
+        await wait(220);
 
-        for (let count = 3; count >= 0; count--) {
-          await typePanelMessage(
-            result,
-            `Password brute-forced successfully. Hacking into system in ${count}...`,
-            42,
-          );
-          await wait(420);
+        const baseMessage = "Password brute-forced successfully. Hacking into system in ";
+        result.className = "result ok";
+        await typePanelMessage(result, `${baseMessage}3...`, 34);
+
+        for (let count = 2; count >= 0; count--) {
+          await wait(760);
+          result.textContent = `${baseMessage}${count}...`;
         }
 
+        await wait(500);
         result.classList.add("fading-out");
         await wait(460);
         result.classList.remove("fading-out");
-        enterHomepageState();
+        localStorage.setItem(LOGGED_IN_KEY, "1");
+        enterHomepageState(true);
       }
 
       async function runDeleteCompletionFlow() {
@@ -931,11 +1029,13 @@
       syncPrivilegeToggle();
       const isLockedOut = applyPersistentLogoutState();
 
-      if (!isLockedOut) {
+      if (!isLockedOut && localStorage.getItem(LOGGED_IN_KEY) === "1") {
+        enterHomepageState();
+      } else if (!isLockedOut) {
         runAutoLoginIntro();
       }
 
-      if (!logOutput.hasChildNodes()) {
+      if (isLockedOut && !logOutput.hasChildNodes()) {
         appendLog("[SYS] Incident log standby. Awaiting access handshake...");
       }
     </script>
