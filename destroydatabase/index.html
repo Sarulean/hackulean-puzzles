@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Destroy Database</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="grid-overlay" class="grid-overlay" aria-hidden="true"></div>
+    <main class="shell shell-centered">
+      <p id="boot-status" class="boot-status" aria-live="polite"></p>
+      <section class="panel starter-panel is-hidden">
+        <h1>PAYLOAD INITIALIZED</h1>
+        <p class="deck">Click Run to enter database...</p>
+        <button id="action-button" class="action-button" type="button">Run</button>
+      </section>
+      <section id="management-screen" class="panel management-screen is-hidden" aria-hidden="true">
+        <h1 class="management-title">DATABASE MANAGEMENT</h1>
+        <div class="management-status-box">
+          <h2 class="management-label">STATUS</h2>
+          <p class="management-status-value">
+            Connected · <span id="access-state">Elevated Access</span> ·
+            <span id="monitoring-state" class="status-monitoring">Monitoring Active</span>
+          </p>
+          <p id="security-alert-message" class="security-alert-message is-hidden">SECURITY ALERT</p>
+        </div>
+        <div class="management-commands-box">
+          <h2 class="management-label">ADMINISTRATION COMMANDS</h2>
+          <ul id="management-command-list" class="management-command-list">
+            <li>
+              <button type="button" class="command-button" data-command="grant-root">
+                grant root --node all
+              </button>
+            </li>
+            <li>
+              <button type="button" class="command-button" data-command="freeze-transactions">
+                freeze transactions --scope global
+              </button>
+            </li>
+            <li>
+              <button type="button" class="command-button" data-command="flush-cache">
+                flush cache --force
+              </button>
+            </li>
+            <li>
+              <button type="button" class="command-button" data-command="replicate-backup">
+                replicate backup --target cold-storage
+              </button>
+            </li>
+            <li>
+              <button type="button" class="command-button" data-command="verify-integrity">
+                verify integrity --deep --autofix
+              </button>
+            </li>
+          </ul>
+          <div id="root-ops-panel" class="root-ops-panel is-hidden" aria-hidden="true">
+            <button id="disable-monitoring-button" type="button" class="action-button root-op-button">
+              DISABLE MONITORING
+            </button>
+            <button id="change-bypass-button" type="button" class="action-button root-op-button">
+              CHANGE BYPASS CODE
+            </button>
+            <button id="sql-terminal-button" type="button" class="action-button root-op-button">
+              ENTER SQL TERMINAL
+            </button>
+          </div>
+          <div id="commands-lock" class="commands-lock is-hidden" aria-hidden="true">
+            <div class="lock-icon" aria-hidden="true"></div>
+            <button id="request-access-button" class="action-button request-access-button" type="button">
+              REQUEST ACCESS
+            </button>
+          </div>
+        </div>
+        <div class="management-log-box" aria-live="polite">
+          <h2 class="management-label">LOG</h2>
+          <div id="management-log-entries" class="management-log-entries">
+            <p>[INFO] Session established</p>
+            <p>[INFO] Command channel synchronized</p>
+            <p>[WARN] Legacy shard latency detected</p>
+            <p>[INFO] Awaiting operator action...</p>
+          </div>
+        </div>
+      </section>
+    </main>
+    <div id="security-alert-modal" class="security-alert-modal is-hidden" role="alertdialog" aria-modal="true" aria-labelledby="security-alert-title" aria-hidden="true">
+      <div class="security-alert-modal-panel">
+        <p class="security-alert-kicker">INTRUSION DETECTED</p>
+        <h2 id="security-alert-title" class="security-alert-title">SECURITY ALERT</h2>
+        <p id="security-alert-reason" class="security-alert-reason">
+          Unauthorized activity has been detected.
+        </p>
+        <button id="security-alert-ack" type="button" class="action-button security-alert-ack">
+          ACKNOWLEDGE
+        </button>
+      </div>
+    </div>
+    <div id="request-access-modal" class="request-access-modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="request-access-title" aria-hidden="true">
+      <div class="request-access-modal-panel">
+        <h2 id="request-access-title" class="request-access-title">Access Request Form</h2>
+        <p class="request-access-copy">Submit a support request for temporary administrative access.</p>
+        <form id="request-access-form" class="request-access-form">
+          <label class="request-access-field-label" for="request-title">Title</label>
+          <input id="request-title" name="title" class="request-access-input" type="text" placeholder="Reason for elevated access" />
+          <label class="request-access-field-label" for="request-description">Description</label>
+          <textarea id="request-description" name="description" class="request-access-textarea" rows="4" placeholder="Describe what you need to do and why"></textarea>
+          <div class="request-access-actions">
+            <button id="request-access-cancel" type="button" class="action-button request-access-cancel">Cancel</button>
+            <button id="request-access-submit" type="submit" class="action-button request-access-submit">Submit</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div id="request-denied-modal" class="request-denied-modal is-hidden" role="alertdialog" aria-modal="true" aria-labelledby="request-denied-title" aria-hidden="true">
+      <div class="request-denied-modal-panel">
+        <h2 id="request-denied-title" class="request-denied-title">Access Request Denied</h2>
+        <p class="request-denied-copy">Your access request was denied.</p>
+        <p class="request-denied-copy">For more information, check code SHRqHZnQ</p>
+        <button id="request-denied-close" type="button" class="action-button request-denied-close">Close</button>
+      </div>
+    </div>
+    <div id="bypass-modal" class="request-access-modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="bypass-title" aria-hidden="true">
+      <div class="request-access-modal-panel">
+        <h2 id="bypass-title" class="request-access-title">Bypass Verification</h2>
+        <p id="bypass-description" class="request-access-copy">Enter bypass code to continue.</p>
+        <form id="bypass-form" class="request-access-form">
+          <label class="request-access-field-label" for="bypass-code-input">Bypass code</label>
+          <input id="bypass-code-input" name="bypassCode" class="request-access-input" type="password" autocomplete="off" />
+          <p id="bypass-error" class="modal-error is-hidden">Invalid bypass code.</p>
+          <div class="request-access-actions">
+            <button id="bypass-cancel" type="button" class="action-button request-access-cancel">Cancel</button>
+            <button id="bypass-submit" type="submit" class="action-button request-access-submit">Submit</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div id="change-bypass-modal" class="request-access-modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="change-bypass-title" aria-hidden="true">
+      <div class="request-access-modal-panel">
+        <h2 id="change-bypass-title" class="request-access-title">Change Bypass Code</h2>
+        <form id="change-bypass-form" class="request-access-form">
+          <label class="request-access-field-label" for="old-bypass-code">Old code</label>
+          <input id="old-bypass-code" name="oldBypassCode" class="request-access-input" type="password" autocomplete="off" />
+          <label class="request-access-field-label" for="new-bypass-code">New code</label>
+          <input id="new-bypass-code" name="newBypassCode" class="request-access-input" type="text" autocomplete="off" />
+          <p id="change-bypass-error" class="modal-error is-hidden">Unable to change bypass code.</p>
+          <div class="request-access-actions">
+            <button id="change-bypass-cancel" type="button" class="action-button request-access-cancel">Cancel</button>
+            <button id="change-bypass-submit" type="submit" class="action-button request-access-submit">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div id="info-modal" class="request-denied-modal is-hidden" role="alertdialog" aria-modal="true" aria-labelledby="info-title" aria-hidden="true">
+      <div class="request-denied-modal-panel">
+        <h2 id="info-title" class="request-denied-title">System Notice</h2>
+        <p id="info-message" class="request-denied-copy">Message</p>
+        <button id="info-close" type="button" class="action-button request-denied-close">Close</button>
+      </div>
+    </div>
+    <div id="sql-terminal-modal" class="request-access-modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="sql-terminal-title" aria-hidden="true">
+      <div class="request-access-modal-panel sql-terminal-panel">
+        <h2 id="sql-terminal-title" class="request-access-title">SQL TERMINAL</h2>
+        <p class="request-access-copy">Available databases:</p>
+        <ul id="sql-database-list" class="sql-database-list">
+          <li data-db="PasswordFiles">PasswordFiles</li>
+          <li data-db="DataMain">DataMain</li>
+          <li data-db="AdminCode">AdminCode</li>
+        </ul>
+        <div id="sql-terminal-output" class="sql-terminal-output" aria-live="polite"></div>
+        <form id="sql-terminal-form" class="request-access-form">
+          <label class="request-access-field-label" for="sql-command-input">SQL command</label>
+          <input id="sql-command-input" class="request-access-input" type="text" autocomplete="off" placeholder="Type an SQL command..." />
+          <div class="request-access-actions">DROP DATA
+            <button id="sql-terminal-close" type="button" class="action-button request-access-cancel">Close</button>
+            <button id="sql-terminal-submit" type="submit" class="action-button request-access-submit">Run</button>
+          </div>
+        </form>
+        <button id="takeover-button" type="button" class="action-button request-denied-close is-hidden">Take Over Database</button>
+      </div>
+    </div>
+    <div id="takeover-modal" class="request-denied-modal is-hidden" role="alertdialog" aria-modal="true" aria-labelledby="takeover-title" aria-hidden="true">
+      <div class="request-denied-modal-panel">
+        <h2 id="takeover-title" class="request-denied-title">Taking Over Database</h2>
+        <div class="takeover-progress-track">
+          <div id="takeover-progress-fill" class="takeover-progress-fill"></div>
+        </div>
+        <p id="takeover-progress-text" class="request-denied-copy">0%</p>
+      </div>
+    </div>
+    <div id="puzzle-complete-modal" class="request-denied-modal is-hidden" role="alertdialog" aria-modal="true" aria-labelledby="puzzle-complete-title" aria-hidden="true">
+      <div class="request-denied-modal-panel">
+        <h2 id="puzzle-complete-title" class="request-denied-title">Puzzle Completed</h2>
+        <p class="request-denied-copy">You shut down the evil database and took over it to store files!</p>
+        <button id="return-root-button" type="button" class="action-button request-denied-close">Return to Puzzle Root</button>
+      </div>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>

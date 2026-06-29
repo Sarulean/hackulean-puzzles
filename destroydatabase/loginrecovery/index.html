@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login Recovery</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <h1>Login Recovery</h1>
+      <p class="copy">Enter today's safety unlock code to restore temporary access.</p>
+      <form id="recovery-form" class="recovery-form">
+        <label for="recovery-code">Daily Code</label>
+        <input id="recovery-code" name="recovery-code" type="text" autocomplete="off" required />
+        <button type="submit">Unlock</button>
+      </form>
+      <p id="status" class="status"></p>
+    </main>
+    <script src="script.js"></script>
+  </body>
+</html>
