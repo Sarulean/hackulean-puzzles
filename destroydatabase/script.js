@@ -1017,7 +1017,7 @@ function setupManagementInteractions() {
       hideRequestAccessModal();
       showRequestDeniedModal();
       appendLog("NOTICE", "Access request denied");
-      appendLog("NOTICE", "For more information, check code SHRqHZnQ");
+      appendLog("NOTICE", "For more information, check code SKRqHZnQ");
 
       if (requestAccessSubmit) {
         requestAccessSubmit.disabled = false;
