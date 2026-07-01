@@ -530,10 +530,13 @@ body::before {
   margin-bottom: 10px;
   font-size: 0.88rem;
   color: #9fcedd;
+  font-family: "Courier New", Courier, monospace;
+  line-height: 1.35;
 }
 
 .sql-terminal-output p {
   margin: 0 0 6px;
+  white-space: pre-wrap;
 }
 
 .takeover-progress-track {

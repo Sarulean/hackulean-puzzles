@@ -616,10 +616,9 @@
 
       let internetBooting = false;
       let incidentTriggered = false;
-      let foundCredentialSet = false;
-      let foundBootSet = false;
       let keywordCheckComplete = false;
       let logoutSequenceStarted = false;
+      const taskOneSavedClues = new Set();
 
       function clearBootMessage() {
         result.textContent = "";
@@ -825,8 +824,65 @@
         );
       }
 
+      function rememberTaskOneClue(clueKey) {
+        if (taskOneSavedClues.has(clueKey)) {
+          return;
+        }
+
+        taskOneSavedClues.add(clueKey);
+      }
+
+      function hasCompletedTaskOne() {
+        return taskOneSavedClues.has("password") && taskOneSavedClues.has("bootloader");
+      }
+
       async function evaluateChatMessage(message) {
         const lowered = message.toLowerCase();
+        const hasCredentialSet =
+          lowered.includes("5ystem3xpert1337!!!") && lowered.includes("password");
+        const hasBootSet =
+          lowered.includes("bootloader") && lowered.includes("unlocked");
+
+        if (!keywordCheckComplete) {
+          if (hasCredentialSet) {
+            rememberTaskOneClue("password");
+          }
+
+          if (hasBootSet) {
+            rememberTaskOneClue("bootloader");
+          }
+
+          if (hasCompletedTaskOne()) {
+            keywordCheckComplete = true;
+            let duration = typeChatMessage("Congratulations, you found the info.");
+            await wait(duration + 500);
+            duration = typeChatMessage("Your next task is:");
+            await wait(duration + 500);
+            duration = typeChatMessage(
+              "https://drive.google.com/drive/folders/1xjnlizoNmX44wGgpa435jTXeoyquUoSC?usp=drive_link",
+            );
+            await wait(duration + 500);
+            duration = typeChatMessage("Adapt");
+            await wait(duration + 500);
+            typeChatMessage("Advance");
+            return;
+          }
+
+          if (hasCredentialSet || hasBootSet) {
+            typeChatMessage(
+              "You found one piece of information, but we need more. Look for another piece of important information.",
+            );
+            return;
+          }
+
+          let duration = typeChatMessage(
+            "Your message is either random or contains only unimportant info.",
+          );
+          await wait(duration + 500);
+          typeChatMessage("Look for important info on the server");
+          return;
+        }
+
         const hasDeleteString =
           lowered.includes("delete") ||
           lowered.includes("deleteme") ||
@@ -838,44 +894,12 @@
           return;
         }
 
-        if (keywordCheckComplete) {
-          return;
-        }
-
-        const hasCredentialSet =
-          lowered.includes("5ystem3xpert1337!!!") && lowered.includes("password");
-        const hasBootSet =
-          lowered.includes("bootloader") && lowered.includes("unlocked");
-
         if (hasCredentialSet) {
-          foundCredentialSet = true;
+          rememberTaskOneClue("password");
         }
 
         if (hasBootSet) {
-          foundBootSet = true;
-        }
-
-        if (foundCredentialSet && foundBootSet) {
-          keywordCheckComplete = true;
-          let duration = typeChatMessage("Congratulations, you found the info.");
-          await wait(duration + 500);
-          duration = typeChatMessage("Your next task is:");
-          await wait(duration + 500);
-          duration = typeChatMessage(
-            "https://drive.google.com/drive/folders/1xjnlizoNmX44wGgpa435jTXeoyquUoSC?usp=drive_link",
-          );
-          await wait(duration + 500);
-          duration = typeChatMessage("Adapt");
-          await wait(duration + 500);
-          typeChatMessage("Advance");
-          return;
-        }
-
-        if (hasCredentialSet || hasBootSet) {
-          typeChatMessage(
-            "You found one piece of information, but we need more. Look for another piece of important information.",
-          );
-          return;
+          rememberTaskOneClue("bootloader");
         }
 
         let duration = typeChatMessage(

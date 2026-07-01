@@ -81,6 +81,77 @@ const TARGET_DATABASES = ["PasswordFiles", "DataMain", "AdminCode"];
 const PUZZLE_ID = "02-destroydatabase";
 const PUZZLE_COMPLETION_DESCRIPTION =
   "You shut down the evil database and took over it to store files!";
+const SQL_TERMINAL_TABLES = {
+  password_files: {
+    label: "password_files",
+    columns: ["file_id", "secret_name", "owner_team", "last_updated"],
+    rows: [
+      {
+        file_id: "pf-001",
+        secret_name: "ops-vault-rotation.csv",
+        owner_team: "security_ops",
+        last_updated: "2026-06-21 09:14",
+      },
+      {
+        file_id: "pf-002",
+        secret_name: "legacy-admin-notes.txt",
+        owner_team: "platform",
+        last_updated: "2026-06-18 16:42",
+      },
+      {
+        file_id: "pf-003",
+        secret_name: "incident-bridge-credentials.json",
+        owner_team: "sre",
+        last_updated: "2026-06-29 08:01",
+      },
+    ],
+  },
+  data_main: {
+    label: "data_main",
+    columns: ["record_id", "dataset_name", "status", "updated_at"],
+    rows: [
+      {
+        record_id: "dm-1042",
+        dataset_name: "payments_archive",
+        status: "replicating",
+        updated_at: "2026-06-30 11:12",
+      },
+      {
+        record_id: "dm-1043",
+        dataset_name: "support_ticket_index",
+        status: "online",
+        updated_at: "2026-06-30 11:18",
+      },
+      {
+        record_id: "dm-1044",
+        dataset_name: "audit_events",
+        status: "online",
+        updated_at: "2026-06-30 11:20",
+      },
+    ],
+  },
+  admin_code: {
+    label: "admin_code",
+    columns: ["code_name", "value", "issued_to"],
+    rows: [
+      {
+        code_name: "root_override",
+        value: "valid until 2026-07-04",
+        issued_to: "platform-admins",
+      },
+      {
+        code_name: "breakglass_sync",
+        value: "rotate after incident review",
+        issued_to: "on-call",
+      },
+      {
+        code_name: "vault_refresh",
+        value: "approved for quarterly rotation",
+        issued_to: "security-ops",
+      },
+    ],
+  },
+};
 
 let gridColumns = 0;
 let gridRows = 0;
@@ -209,6 +280,67 @@ function appendTerminalLine(message) {
   sqlTerminalOutput.scrollTop = sqlTerminalOutput.scrollHeight;
 }
 
+function appendSqlTableRows(columns, rows) {
+  if (!sqlTerminalOutput) {
+    return;
+  }
+
+  appendTerminalLine(columns.join(" | "));
+  appendTerminalLine(columns.map(() => "---").join(" | "));
+
+  rows.forEach((row) => {
+    appendTerminalLine(columns.map((column) => row[column] ?? "").join(" | "));
+  });
+}
+
+function getSqlTable(commandName) {
+  return SQL_TERMINAL_TABLES[commandName.toLowerCase().replace(/[^a-z0-9_]/g, "")];
+}
+
+function showSqlHelp() {
+  appendTerminalLine("Available commands:");
+  appendTerminalLine("HELP");
+  appendTerminalLine("SELECT * FROM password_files;");
+  appendTerminalLine("SELECT file_id, secret_name FROM password_files;");
+  appendTerminalLine("SELECT * FROM data_main;");
+  appendTerminalLine("SELECT code_name, value FROM admin_code;");
+  appendTerminalLine("DROP DATABASE <name>;");
+  appendTerminalLine("WARNING: DROP DATABASE commands are very dangerous and should not be used unless neccessary!");
+}
+
+function handleSelectCommand(command) {
+  const selectMatch = command.match(/^select\s+(.+?)\s+from\s+([a-zA-Z0-9_]+)(?:\s+limit\s+(\d+))?$/i);
+
+  if (!selectMatch) {
+    appendTerminalLine("[ERROR] Invalid SELECT statement.");
+    return;
+  }
+
+  const requestedColumns = selectMatch[1].trim();
+  const tableName = selectMatch[2].toLowerCase();
+  const limitValue = selectMatch[3] ? Number.parseInt(selectMatch[3], 10) : null;
+  const table = getSqlTable(tableName);
+
+  if (!table) {
+    appendTerminalLine(`[ERROR] Unknown table: ${tableName}`);
+    return;
+  }
+
+  const columns = requestedColumns === "*"
+    ? table.columns
+    : requestedColumns.split(",").map((column) => column.trim()).filter(Boolean);
+
+  const invalidColumns = columns.filter((column) => !table.columns.includes(column));
+  if (invalidColumns.length > 0) {
+    appendTerminalLine(`[ERROR] Unknown column(s): ${invalidColumns.join(", ")}`);
+    return;
+  }
+
+  const rows = limitValue === null ? table.rows : table.rows.slice(0, limitValue);
+  appendTerminalLine(`[OK] ${rows.length} row(s) returned from ${table.label}.`);
+  appendSqlTableRows(columns, rows);
+}
+
 function renderDatabaseList() {
   if (!sqlDatabaseList) {
     return;
@@ -242,7 +374,7 @@ function completePuzzle() {
   hideSqlTerminalModal();
   hideTakeoverModal();
   clearPuzzleSpecificStorage();
-  setGlitchLevel(4);
+  setGlitchLevel(0);
 
   puzzleCompleteModal?.classList.remove("is-hidden");
   puzzleCompleteModal?.setAttribute("aria-hidden", "false");
@@ -643,6 +775,8 @@ function resetSqlTerminalState() {
 
   sqlTerminalOutput?.replaceChildren();
   appendTerminalLine("Connected to root terminal.");
+  appendTerminalLine("Run HELP to check commands before issuing SQL.");
+  appendTerminalLine("Sample data is loaded in password_files, data_main, and admin_code.");
   renderDatabaseList();
 
   takeoverButton?.classList.add("is-hidden");
@@ -695,12 +829,20 @@ function handleSqlCommandSubmit(event) {
 
   appendTerminalLine(`> ${rawInput}`);
   const normalized = rawInput.replace(/;$/, "");
-  const match = normalized.match(/^drop\s+database\s+([a-zA-Z0-9_]+)$/i);
+  const lowered = normalized.toLowerCase();
 
-  if (match) {
-    handleDropCommand(match[1]);
+  if (lowered === "help") {
+    showSqlHelp();
+  } else if (lowered.startsWith("select ")) {
+    handleSelectCommand(normalized);
   } else {
-    appendTerminalLine("[ERROR] Invalid command. Use DROP DATABASE <name>;");
+    const match = normalized.match(/^drop\s+database\s+([a-zA-Z0-9_]+)$/i);
+
+    if (match) {
+      handleDropCommand(match[1]);
+    } else {
+      appendTerminalLine("[ERROR] Invalid command. Use HELP, SELECT <columns> FROM <table>; or DROP DATABASE <name>;");
+    }
   }
 
   if (sqlCommandInput) {
